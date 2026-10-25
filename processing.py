@@ -9,9 +9,9 @@ def to_bool(series):
 
 # LOAD CLAY OUTPUTS
 
-CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/validated_leads_list_clay.csv'
-CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/validated_contacts_list_clay.csv'
-CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/clay_invalid_emails.csv'
+CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/validated_leads_list_clay.csv'
+CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/validated_contacts_list_clay.csv'
+CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_validated_list.csv'
 
 
 def concatenate_people_clay():
@@ -36,20 +36,19 @@ def concatenate_people_clay():
 
     clay_people['Source'] = "Clay"
 
-    invalid_email_clay = clay_people[clay_people['Invalid Email (Output)'] == False]
-    print(f"  Combined: {len(clay_people)} rows | Invalid emails kept: {len(invalid_email_clay)}")
 
-    invalid_email_clay.to_csv(CLAY_OUTPUT_PATH, index=False)
+    clay_people.to_csv(CLAY_OUTPUT_PATH, index=False)
     print(f"  Saved to {CLAY_OUTPUT_PATH}")
 
-    return invalid_email_clay
+    return clay_people
 
 
 # LOAD SFDC OUTPUTS
 
-SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/invalid_emails_contacts_mass_updated.csv'
-SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/invalid_emails_leads_mass_updated.csv'
-SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/sfdc_people.csv'
+SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/invalid_emails_leads.csv'
+SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/invalid_emails_contacts' \
+'.csv'
+SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people.csv'
 
 
 def concatenate_people_sfdc():
@@ -86,16 +85,62 @@ def concatenate_people_sfdc():
     return sfdc_people
 
 
+CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_validated_list.csv'
+SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people.csv'
+
 def merge_clay_sfdc_people():
+
+    clay_people = pd.read_csv(CLAY_PEOPLE_PATH, dtype=str)
+    sfdc_people = pd.read_csv(SFDC_PEOPLE_PATH, dtype=str)
+
+    for df in (clay_people, sfdc_people):
+        df['Related Record ID'] = df['Related Record ID'].str.strip()
+
+    # Keep only the Clay columns you need, and leave out Email so the SFDC one is used
+    clay_people = clay_people.drop(columns=['Email', 'lead or contact'])
+
+    merged_data = pd.merge(sfdc_people, clay_people, on='Related Record ID', how='left')
+    merged_data.to_csv(
+        '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/merged_data.csv',
+        index=False,
+    )
+
+    print('Merged complete')
+
+    return merged_data
+
+
+
+MERGED_DATA_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/merged_data.csv'
+
+def get_invalid_emails():
+
+    invalid_emails = pd.read_csv(MERGED_DATA_PATH)
+
+    print(invalid_emails.columns)
+
     return None
 
 
+
+
+
+
+
+
 if __name__ == "__main__":
-    # print("=== Clay ===")
-    # clay_result = concatenate_people_clay()
+    print("=== Clay ===")
+    clay_concat = concatenate_people_clay()
 
-    # print("\n=== SFDC ===")
-    # sfdc_result = concatenate_people_sfdc()
+    print("\n=== SFDC ===")
+    sfdc_concat = concatenate_people_sfdc()
 
-    # print("\nDone.")
-    # print(f"Clay invalid emails: {len(clay_result)} rows | SFDC people: {len(sfdc_result)} rows")
+    print("\nDone.")
+    print(f"Clay people: {len(clay_concat)} rows | SFDC people: {len(sfdc_concat)} rows")
+
+    print("=== SFDC & Clay ")
+    merged_data = (merge_clay_sfdc_people())
+    print("=== SFDC & Clay data is now merged===")
+
+    print("===Get invalid emails across")
+    get_invalid_emails()
