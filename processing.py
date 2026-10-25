@@ -2,21 +2,28 @@ import pandas as pd
 import numpy as np
 
 
+def to_bool(series):
+    """Convert 0/1 (or 0.0/1.0) to booleans. Blanks and non-numeric values become False."""
+    return pd.to_numeric(series, errors='coerce').fillna(0).astype(bool)
+
+
 # LOAD CLAY OUTPUTS
 
 CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/validated_leads_list_clay.csv'
 CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/validated_contacts_list_clay.csv'
+CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/clay_invalid_emails.csv'
+
 
 def concatenate_people_clay():
-
+    print("Loading Clay files...")
     leads_df = pd.read_csv(CLAY_INPUT_LEADS_PATH)
     contacts_df = pd.read_csv(CLAY_INPUT_CONTACTS_PATH)
+    print(f"  Leads: {len(leads_df)} rows | Contacts: {len(contacts_df)} rows")
 
     leads_df['lead or contact'] = "lead"
     contacts_df['lead or contact'] = "contact"
 
     clay_people = pd.concat([leads_df, contacts_df], axis=0, ignore_index=True)
-
 
     clay_people["Related Record ID"] = np.where(
         clay_people["lead or contact"] == "lead",
@@ -24,50 +31,71 @@ def concatenate_people_clay():
         clay_people["Contact_id"],
     )
 
-    clay_people = clay_people[['Related Record ID','Email', 'Status (Zerobounce)', 'Sub Status (Zerobounce)',
-        'Invalid Email (Output)', 'Description (Output)', 'lead or contact']]
+    clay_people = clay_people[['Related Record ID', 'Email', 'Status (Zerobounce)', 'Sub Status (Zerobounce)',
+                               'Invalid Email (Output)', 'Description (Output)', 'lead or contact']]
 
     clay_people['Source'] = "Clay"
 
     invalid_email_clay = clay_people[clay_people['Invalid Email (Output)'] == False]
+    print(f"  Combined: {len(clay_people)} rows | Invalid emails kept: {len(invalid_email_clay)}")
 
-    invalid_email_clay.to_csv('/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/clay_invalid_emails.csv')
+    invalid_email_clay.to_csv(CLAY_OUTPUT_PATH, index=False)
+    print(f"  Saved to {CLAY_OUTPUT_PATH}")
 
-    return print(invalid_email_clay.shape)
+    return invalid_email_clay
 
-# concatenate_people_clay()
 
+# LOAD SFDC OUTPUTS
 
 SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/invalid_emails_contacts_mass_updated.csv'
 SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/new_sfdc_data/invalid_emails_leads_mass_updated.csv'
+SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/sfdc_people.csv'
+
 
 def concatenate_people_sfdc():
-
+    print("Loading SFDC files...")
     leads_df = pd.read_csv(SFDC_INPUT_LEADS_PATH)
     contacts_df = pd.read_csv(SFDC_INPUT_CONTACTS_PATH)
+    print(f"  Leads: {len(leads_df)} rows | Contacts: {len(contacts_df)} rows")
 
     leads_df['lead or contact'] = "lead"
     contacts_df['lead or contact'] = "contact"
 
-    contacts_df.rename(columns={'Account':'Account Name'}, inplace=True)
+    contacts_df.rename(columns={'Account': 'Account Name'}, inplace=True)
 
     sfdc_people = pd.concat([leads_df, contacts_df], axis=0, ignore_index=True)
 
     sfdc_people["Related Record ID"] = np.where(
-            sfdc_people["lead or contact"] == "lead",
-            sfdc_people["Lead ID"],
-            sfdc_people["Contact ID"],
-        )
+        sfdc_people["lead or contact"] == "lead",
+        sfdc_people["Lead ID"],
+        sfdc_people["Contact ID"],
+    )
 
-
-    sfdc_people['Ideal_Persona'] = np.where(sfdc_people['Automated Persona Match'] | sfdc_people['Ideal Persona'], 'TRUE', 'FALSE')
-    sfdc_people['Full Name'] = sfdc_people['First Name'] + " " + sfdc_people['Last Name']
+    sfdc_people['Ideal_Persona'] = np.where(
+        to_bool(sfdc_people['Automated Persona Match']) | to_bool(sfdc_people['Ideal Persona']),
+        'TRUE', 'FALSE',
+    )
+    sfdc_people['Full Name'] = sfdc_people['First Name'].fillna('') + " " + sfdc_people['Last Name'].fillna('')
     sfdc_people = sfdc_people.drop(columns=['First Name', 'Last Name', 'Lead ID', 'Contact ID'])
 
-    # return print(sfdc_people[['Ideal_Persona', 'Ideal Persona', 'Automated Persona Match']].sample(7))
-    return print(sfdc_people.columns)
+    print(f"  Combined: {len(sfdc_people)} rows | Ideal_Persona TRUE: {(sfdc_people['Ideal_Persona'] == 'TRUE').sum()}")
 
+    sfdc_people.to_csv(SFDC_OUTPUT_PATH, index=False)
+    print(f"  Saved to {SFDC_OUTPUT_PATH}")
 
-# concatenate_people_sfdc()
+    return sfdc_people
+
 
 def merge_clay_sfdc_people():
+    return None
+
+
+if __name__ == "__main__":
+    # print("=== Clay ===")
+    # clay_result = concatenate_people_clay()
+
+    # print("\n=== SFDC ===")
+    # sfdc_result = concatenate_people_sfdc()
+
+    # print("\nDone.")
+    # print(f"Clay invalid emails: {len(clay_result)} rows | SFDC people: {len(sfdc_result)} rows")
