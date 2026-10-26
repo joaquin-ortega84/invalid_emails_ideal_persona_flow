@@ -9,9 +9,9 @@ def to_bool(series):
 
 # LOAD CLAY OUTPUTS
 
-CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/clay data crunch/raw_data/validated_leads_list_clay.csv'
-CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/clay data crunch/raw_data/validated_contacts_list_clay.csv'
-CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/clay data crunch/bronze/clay_invalid_emails_true.csv'
+CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/validated_leads_list_clay.csv'
+CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/validated_contacts_list_clay.csv'
+CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_invalid_emails_true.csv'
 
 
 CLAY_LEAD_ID_COL = 'Lead ID'        # change to your renamed column
@@ -48,9 +48,9 @@ def concatenate_people_clay_invalid():
 
 # LOAD SFDC OUTPUTS
 
-SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/clay data crunch/raw_data/sfdc_invalid_emails_leads.csv'
-SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/clay data crunch/raw_data/sfdc_invalid_emails_contacts.csv'
-SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/clay data crunch/bronze/sfdc_people.csv'
+SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/sfdc_invalid_emails_leads.csv'
+SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/sfdc_invalid_emails_contacts.csv'
+SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people.csv'
 
 
 def concatenate_people_sfdc():
@@ -85,13 +85,13 @@ def concatenate_people_sfdc():
                 'Ideal Persona', 'Automated Persona Match', 'Account Type', 'Ideal_Persona', 'Invalid Email'  ,'lead or contact', \
                 'Status', 'Account Name', 'Company', 'Converted', 'Related Record ID']]
 
-    sfdc_people.to_csv('/mnt/c/Users/jortega/code/clay data crunch/bronze/sfdc_people_list.csv')
+    sfdc_people.to_csv('/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people_list.csv')
 
     return sfdc_people
 
 
-CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/clay data crunch/bronze/clay_validated_list.csv'
-SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/clay data crunch/bronze/sfdc_people_list.csv'
+CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_validated_list.csv'
+SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people_list.csv'
 
 def merge_clay_sfdc_people():
 
@@ -110,7 +110,7 @@ def merge_clay_sfdc_people():
 
     # Prefer the SFDC email, fall back to Clay's when there's no SFDC match
     merged_data.to_csv(
-        '/mnt/c/Users/jortega/code/clay data crunch/silver/merged_data.csv',
+        '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/merged_data.csv',
         index=False,
     )
 
