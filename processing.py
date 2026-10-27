@@ -119,4 +119,39 @@ def merge_clay_sfdc_people():
     return merged_data
 
 # concatenate_people_clay_invalid()
-concatenate_people_sfdc()
+# concatenate_people_sfdc()
+
+
+import pandas as pd
+
+INBOUND_DIR = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/inbound reply'  # adjust to where this folder lives
+BRONZE = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze'
+
+def concatenate_inbound_reply():
+
+    outlook_all       = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outlook.csv')
+    outreach_contacts = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outreach_contacts.csv')
+    outreach_leads    = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outreach_leads.csv')
+
+    outlook_all['Source']       = 'outlook leads and contacts'
+    outreach_contacts['Source'] = 'outreach contacts'
+    outreach_leads['Source']    = 'outreach leads'
+
+    inbound_emails = pd.concat(
+        [outreach_leads, outreach_contacts, outlook_all],
+        axis=0,
+        ignore_index=True,
+    )
+
+    print(f"Leads: {len(outreach_leads)} | Contacts: {len(outreach_contacts)} | Outlook: {len(outlook_all)}")
+    print(f"Combined: {len(inbound_emails)} rows")
+
+    inbound_emails.to_csv(
+        f'{BRONZE}/inbound_reply_activities.csv',
+        index=False,
+        encoding='utf-8-sig',
+    )
+
+    return inbound_emails
+
+concatenate_inbound_reply()
