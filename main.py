@@ -6,8 +6,8 @@ from to_gold import get_activity_check_data
 
 ############### Run this to ##############:
 
-# Concatenate clay validated lists and filter for invalid emails
-get_clay_invalid_emails_concatenated()
+# # Concatenate clay validated lists and filter for invalid emails
+# get_clay_invalid_emails_concatenated()
 
 ## Get sfdc oeople concatenated and not disqualified
 get_sfdc_people_concatenated_not_disqualified()

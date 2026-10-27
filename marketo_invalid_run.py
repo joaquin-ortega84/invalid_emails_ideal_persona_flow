@@ -4,11 +4,10 @@ import numpy as np
 
 RAW_DATA = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data'
 BRONZE   = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze'
-SILVER   = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver'
 GOLD     = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/gold'
 
 SFDC_PEOPLE_PATH = f'{BRONZE}/sfdc_leads_contacts_not_disqualified.csv'
-OUTPUT_PATH = f'{GOLD}/marketo_invalid_post_activity_check.csv'
+OUTPUT_PATH      = f'{GOLD}/marketo_invalid_post_activity_check.csv'
 
 WINDOW_DAYS = 90
 
@@ -25,10 +24,14 @@ def get_marketo_invalid():
 
     marketo_invalid = marketo[to_bool(marketo['Invalid Email'])].copy()
     print('marketo_invalid', marketo_invalid.shape)
+
     return marketo_invalid
 
 
 def get_activity_check_data(people):
+
+    people = people.copy()
+
     engagements    = pd.read_csv(f'{BRONZE}/grouped_engagements.csv', dtype=str)
     inbound_emails = pd.read_csv(f'{BRONZE}/inbound_reply_activities.csv', dtype=str, encoding='utf-8-sig')
     contact_roles  = pd.read_csv(f'{RAW_DATA}/contact roles/contact_roles.csv', dtype=str)
@@ -64,7 +67,7 @@ def get_activity_check_data(people):
         .reset_index()
     )
 
-    # --- Merge everything onto the people base ---
+    # --- Merge everything onto the Marketo base ---
     final_result = (
         people
         .merge(engagements, on='Related Record ID', how='left', validate='many_to_one')
@@ -76,7 +79,7 @@ def get_activity_check_data(people):
 
     final_result['has_contact_role'] = final_result['has_contact_role'].fillna(0).astype(int)
 
-    print(f"People rows: {len(people)} | final_result: {len(final_result)}")
+    print(f"Marketo rows: {len(people)} | final_result: {len(final_result)}")
     print(f"With an engagement: {final_result['Engagement_Date'].notna().sum()}")
     print(f"With an inbound reply: {final_result['Last_Reply_Date'].notna().sum()}")
     print(f"With a contact role: {(final_result['has_contact_role'] == 1).sum()}")
@@ -92,7 +95,7 @@ def get_activity_check_data(people):
     final_result['days_since_inbound_reply'] = (today - final_result['Last_Reply_Date']).dt.days
     final_result['days_since_last_meeting']  = (today - final_result['Last Meeting Date']).dt.days
 
-    # --- Disqualify logic: first matching condition wins ---
+    # --- Activity check: first matching condition wins; any match passes ---
     conditions = [
         final_result['days_since_engagement']    < WINDOW_DAYS,
         final_result['days_since_inbound_reply'] < WINDOW_DAYS,
@@ -103,7 +106,10 @@ def get_activity_check_data(people):
 
     final_result['Disqualify Reason'] = np.select(conditions, reasons, default='failed activity check')
     final_result['Disqualified'] = final_result['Disqualify Reason'] == 'failed activity check'
+    final_result['Passed Activity Check'] = ~final_result['Disqualified']
 
+    print("Disqualified:", final_result['Disqualified'].sum())
+    print("Passed activity check:", final_result['Passed Activity Check'].sum())
     print(final_result['Disqualify Reason'].value_counts())
 
     os.makedirs(GOLD, exist_ok=True)

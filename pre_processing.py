@@ -93,11 +93,6 @@ def get_sfdc_people_concatenated_not_disqualified():
     sfdc_people['Full Name'] = sfdc_people['First Name'].fillna('') + " " + sfdc_people['Last Name'].fillna('')
 
 
-
-    sfdc_people = sfdc_people[['Full Name', 'Title', 'Job Level', 'Last Response Date', 'Last Meeting Date', \
-                'Ideal Persona', 'Automated Persona Match', 'Account Type', 'Ideal_Persona', 'Invalid Email'  ,'lead or contact', \
-                'Status', 'Account_Name', 'Account Name', 'Company', 'Converted', 'Related Record ID']]
-
     sfdc_people.to_csv(SFDC_OUTPUT_PATH, index=False, encoding='utf-8-sig')
     print(f"  Saved {len(sfdc_people)} leads and contacts not disqualified to {SFDC_OUTPUT_PATH}")
 

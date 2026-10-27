@@ -97,5 +97,4 @@ def get_activity_check_data():
         encoding='utf-8-sig',
     )
     print(f"Saved to {GOLD}/clay_augmented_post_activity_check.csv")
-
     return final_result
