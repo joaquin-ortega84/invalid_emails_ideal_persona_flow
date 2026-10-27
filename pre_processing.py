@@ -7,25 +7,29 @@ def to_bool(series):
     return pd.to_numeric(series, errors='coerce').fillna(0).astype(bool)
 
 
-# LOAD CLAY OUTPUTS
 
-CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/validated_leads_list_clay.csv'
-CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/validated_contacts_list_clay.csv'
-CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_invalid_emails_true.csv'
-
-
-CLAY_LEAD_ID_COL = 'Lead ID'        # change to your renamed column
-CLAY_CONTACT_ID_COL = 'Contact ID'  # change to your renamed column
+CLAY_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/clay/validated_leads_list_clay.csv'
+CLAY_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/clay/validated_contacts_list_clay.csv'
+CLAY_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_invalid_emails_data.csv'
 
 
-def concatenate_people_clay_invalid():
+CLAY_LEAD_ID_COL = 'Lead ID'
+CLAY_CONTACT_ID_COL = 'Contact ID'
+
+
+def get_clay_invalid_emails_concatenated():
+
+    print('Started getting Clay invalid emails')
     leads_df = pd.read_csv(CLAY_INPUT_LEADS_PATH)
     contacts_df = pd.read_csv(CLAY_INPUT_CONTACTS_PATH)
+    print('Leads df', leads_df.shape)
+    print('Contacts df', contacts_df.shape)
 
     leads_df['lead or contact'] = 'lead'
     contacts_df['lead or contact'] = 'contact'
 
     clay_people = pd.concat([leads_df, contacts_df], axis=0, ignore_index=True)
+    print('clay people', clay_people.shape)
 
     clay_people['Related Record ID'] = np.where(
         clay_people['lead or contact'] == 'lead',
@@ -33,27 +37,31 @@ def concatenate_people_clay_invalid():
         clay_people[CLAY_CONTACT_ID_COL],
     )
 
-    clay_invalid_email = clay_people[to_bool(clay_people['Invalid Email (Output)'])].copy()
+    clay_invalid_emails = clay_people[clay_people['Invalid Email (Output)'] == True]
+    print('clay invalid emails', clay_invalid_emails.shape)
 
-    clay_invalid_email = clay_invalid_email[[
+    clay_invalid_emails = clay_invalid_emails[[
         'Related Record ID', 'Email', 'Status (Zerobounce)', 'Sub Status (Zerobounce)',
         'Invalid Email (Output)', 'Description (Output)', 'lead or contact',
     ]]
 
-    clay_invalid_email.to_csv(CLAY_OUTPUT_PATH, index=False)
-    print(f"  Saved {len(clay_invalid_email)} invalid rows to {CLAY_OUTPUT_PATH}")
+    clay_invalid_emails.to_csv(CLAY_OUTPUT_PATH, index=False, encoding='utf-8-sig')
+    print(f"  Saved {len(clay_invalid_emails)} invalid emails to {CLAY_OUTPUT_PATH}")
 
-    return clay_invalid_email
+    return clay_invalid_emails
+
+
+
 
 
 # LOAD SFDC OUTPUTS
 
-SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/sfdc_invalid_emails_leads.csv'
-SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/sfdc_invalid_emails_contacts.csv'
-SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people.csv'
+SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/leads and contacts/contacts not disqualified.csv'
+SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/leads and contacts/leads_not_disqualified.csv'
+SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_leads_contacts_not_disqualified.csv'
 
 
-def concatenate_people_sfdc():
+def get_sfdc_people_concatenated_not_disqualified():
     print("Loading SFDC files...")
     leads_df = pd.read_csv(SFDC_INPUT_LEADS_PATH)
     contacts_df = pd.read_csv(SFDC_INPUT_CONTACTS_PATH)
@@ -72,10 +80,15 @@ def concatenate_people_sfdc():
         to_bool(sfdc_people['Automated Persona Match']) | to_bool(sfdc_people['Ideal Persona']),
         'TRUE', 'FALSE',
     )
-    sfdc_people['Full Name'] = sfdc_people['First Name'].fillna('') + " " + sfdc_people['Last Name'].fillna('')
-    sfdc_people = sfdc_people.drop(columns=['First Name', 'Last Name', 'Lead ID', 'Contact ID'])
 
-    print(f"  Combined: {len(sfdc_people)} rows | Ideal_Persona TRUE: {(sfdc_people['Ideal_Persona'] == 'TRUE').sum()}")
+    # Use Company when Account Name is null or blank
+    sfdc_people['Account_Name'] = (
+        sfdc_people['Account Name']
+        .replace(r'^\s*$', np.nan, regex=True)   # treat empty/whitespace strings as null
+        .fillna(sfdc_people['Company'])
+    )
+
+    sfdc_people['Full Name'] = sfdc_people['First Name'].fillna('') + " " + sfdc_people['Last Name'].fillna('')
 
     # print('leads_df columns', leads_df.columns)
     # print('contacts__df columns', contacts_df.columns)
@@ -83,17 +96,19 @@ def concatenate_people_sfdc():
 
     sfdc_people = sfdc_people[['Full Name', 'Title', 'Job Level', 'Email', 'Last Response Date', 'Last Meeting Date', \
                 'Ideal Persona', 'Automated Persona Match', 'Account Type', 'Ideal_Persona', 'Invalid Email'  ,'lead or contact', \
-                'Status', 'Account Name', 'Company', 'Converted', 'Related Record ID']]
+                'Status', 'Account_Name', 'Account Name', 'Company', 'Converted', 'Related Record ID']]
 
-    sfdc_people.to_csv('/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people_list.csv')
+    sfdc_people.to_csv(SFDC_OUTPUT_PATH, index=False, encoding='utf-8-sig')
+    print(f"  Saved {len(sfdc_people)} leads and contacts not disqualified to {SFDC_OUTPUT_PATH}")
+
 
     return sfdc_people
 
 
-CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_validated_list.csv'
-SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_people_list.csv'
+CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_invalid_emails_data.csv'
+SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_leads_contacts_not_disqualified.csv'
 
-def merge_clay_sfdc_people():
+def merge_clay_sfdc_eople_not_disqualified():
 
     clay_people = pd.read_csv(CLAY_PEOPLE_PATH, dtype=str)
     sfdc_people = pd.read_csv(SFDC_PEOPLE_PATH, dtype=str)
@@ -154,4 +169,14 @@ def concatenate_inbound_reply():
 
     return inbound_emails
 
-concatenate_inbound_reply()
+# concatenate_inbound_reply()
+
+
+
+############### Run this to ##############:
+
+## Concatenate clay validated lists and filter for invalid emails
+# get_clay_invalid_emails_concatenated()
+
+## Get sfdc oeople concatenated and not disqualified
+get_sfdc_people_concatenated_not_disqualified()
