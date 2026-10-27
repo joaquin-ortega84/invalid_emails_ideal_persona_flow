@@ -3,14 +3,21 @@ import pandas as pd
 CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_invalid_emails_data.csv'
 SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_leads_contacts_not_disqualified.csv'
 MERGED_DATA_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/clay_augmented_data.csv'
+ACCOUNTS_DATA_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/accounts/all accounts.csv'
+OUTPUT_PATH_AUGMENTED_CLAY = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/augmented_clay.csv'
 
 def augment_clay_with_sfdc():
 
     clay_people = pd.read_csv(CLAY_PEOPLE_PATH, dtype=str)
     sfdc_people = pd.read_csv(SFDC_PEOPLE_PATH, dtype=str)
+    accounts = pd.read_csv(ACCOUNTS_DATA_PATH, dtype=str)
 
-    # Clay is the base: every Clay row is kept, SFDC columns are added where IDs match
-    augmented_clay = pd.merge(
+    accounts['Account_Name'] = accounts['Account Name']
+
+    accounts = accounts.dropna(subset=['Account_Name']).drop_duplicates(subset=['Account_Name'])
+
+    # --- Clay is the base: every Clay row is kept ---
+    augmented_with_people_data = pd.merge(
         clay_people,
         sfdc_people,
         on='Related Record ID',
@@ -18,19 +25,25 @@ def augment_clay_with_sfdc():
         suffixes=('_clay', '_sfdc'),
     )
 
-    # Prefer the SFDC email, fall back to Clay's when there's no SFDC match
-    augmented_clay.to_csv(
-        '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/augmented_caly_data_with_sfdc.csv',
-        index=False,
+    augmented_clay_plus_accounts = pd.merge(
+        augmented_with_people_data,
+        accounts,
+        on='Account_Name',
+        how='left',
+        suffixes=('', '_account'),
+        validate='many_to_one',
     )
 
-    print(f"Merged complete: {len(augmented_clay)} rows (Clay had {len(clay_people)})")
+    print(f"Merged complete: {len(augmented_clay_plus_accounts)} rows (Clay had {len(clay_people)})")
 
-    return augmented_clay
+    augmented_clay_plus_accounts.to_csv(
+        OUTPUT_PATH_AUGMENTED_CLAY, index=False, encoding='utf-8-sig'
+    )
+    print(f"Saved to {OUTPUT_PATH_AUGMENTED_CLAY}")
+
+    return augmented_clay_plus_accounts
 
 augment_clay_with_sfdc()
-
-
 
 import pandas as pd
 
@@ -42,6 +55,8 @@ def concatenate_inbound_reply():
     outlook_all       = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outlook.csv')
     outreach_contacts = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outreach_contacts.csv')
     outreach_leads    = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outreach_leads.csv')
+
+    outlook_all['Email'] = outlook_all['From Address']
 
     outlook_all['Source']       = 'outlook leads and contacts'
     outreach_contacts['Source'] = 'outreach contacts'
@@ -64,4 +79,4 @@ def concatenate_inbound_reply():
 
     return inbound_emails
 
-# concatenate_inbound_reply()
+concatenate_inbound_reply()

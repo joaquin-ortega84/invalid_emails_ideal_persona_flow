@@ -22,8 +22,10 @@ def get_clay_invalid_emails_concatenated():
     print('Started getting Clay invalid emails')
     leads_df = pd.read_csv(CLAY_INPUT_LEADS_PATH)
     contacts_df = pd.read_csv(CLAY_INPUT_CONTACTS_PATH)
+    print('Started concatenation of clay invalid emails')
     print('Leads df', leads_df.shape)
     print('Contacts df', contacts_df.shape)
+
 
     leads_df['lead or contact'] = 'lead'
     contacts_df['lead or contact'] = 'contact'
@@ -57,7 +59,7 @@ def get_clay_invalid_emails_concatenated():
 # LOAD SFDC OUTPUTS
 
 SFDC_INPUT_CONTACTS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/leads and contacts/contacts not disqualified.csv'
-SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/leads and contacts/leads_not_disqualified.csv'
+SFDC_INPUT_LEADS_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/leads and contacts/leads not disqualified.csv'
 SFDC_OUTPUT_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_leads_contacts_not_disqualified.csv'
 
 
@@ -90,11 +92,9 @@ def get_sfdc_people_concatenated_not_disqualified():
 
     sfdc_people['Full Name'] = sfdc_people['First Name'].fillna('') + " " + sfdc_people['Last Name'].fillna('')
 
-    # print('leads_df columns', leads_df.columns)
-    # print('contacts__df columns', contacts_df.columns)
-    print(sfdc_people.columns)
 
-    sfdc_people = sfdc_people[['Full Name', 'Title', 'Job Level', 'Email', 'Last Response Date', 'Last Meeting Date', \
+
+    sfdc_people = sfdc_people[['Full Name', 'Title', 'Job Level', 'Last Response Date', 'Last Meeting Date', \
                 'Ideal Persona', 'Automated Persona Match', 'Account Type', 'Ideal_Persona', 'Invalid Email'  ,'lead or contact', \
                 'Status', 'Account_Name', 'Account Name', 'Company', 'Converted', 'Related Record ID']]
 
@@ -105,78 +105,12 @@ def get_sfdc_people_concatenated_not_disqualified():
     return sfdc_people
 
 
-CLAY_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/clay_invalid_emails_data.csv'
-SFDC_PEOPLE_PATH = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze/sfdc_leads_contacts_not_disqualified.csv'
-
-def merge_clay_sfdc_eople_not_disqualified():
-
-    clay_people = pd.read_csv(CLAY_PEOPLE_PATH, dtype=str)
-    sfdc_people = pd.read_csv(SFDC_PEOPLE_PATH, dtype=str)
-
-
-    # Clay is the base: every Clay row is kept, SFDC columns are added where IDs match
-    merged_data = pd.merge(
-        clay_people,
-        sfdc_people,
-        on='Related Record ID',
-        how='left',
-        suffixes=('_clay', '_sfdc'),
-    )
-
-    # Prefer the SFDC email, fall back to Clay's when there's no SFDC match
-    merged_data.to_csv(
-        '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/silver/merged_data.csv',
-        index=False,
-    )
-
-    print(f"Merged complete: {len(merged_data)} rows (Clay had {len(clay_people)})")
-
-    return merged_data
-
-# concatenate_people_clay_invalid()
-# concatenate_people_sfdc()
-
-
-import pandas as pd
-
-INBOUND_DIR = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/raw_data/inbound reply'  # adjust to where this folder lives
-BRONZE = '/mnt/c/Users/jortega/code/invalid_emails_ideal_persona_flow/bronze'
-
-def concatenate_inbound_reply():
-
-    outlook_all       = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outlook.csv')
-    outreach_contacts = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outreach_contacts.csv')
-    outreach_leads    = pd.read_csv(f'{INBOUND_DIR}/inbound_reply_outreach_leads.csv')
-
-    outlook_all['Source']       = 'outlook leads and contacts'
-    outreach_contacts['Source'] = 'outreach contacts'
-    outreach_leads['Source']    = 'outreach leads'
-
-    inbound_emails = pd.concat(
-        [outreach_leads, outreach_contacts, outlook_all],
-        axis=0,
-        ignore_index=True,
-    )
-
-    print(f"Leads: {len(outreach_leads)} | Contacts: {len(outreach_contacts)} | Outlook: {len(outlook_all)}")
-    print(f"Combined: {len(inbound_emails)} rows")
-
-    inbound_emails.to_csv(
-        f'{BRONZE}/inbound_reply_activities.csv',
-        index=False,
-        encoding='utf-8-sig',
-    )
-
-    return inbound_emails
-
-# concatenate_inbound_reply()
-
 
 
 ############### Run this to ##############:
 
 ## Concatenate clay validated lists and filter for invalid emails
-# get_clay_invalid_emails_concatenated()
+get_clay_invalid_emails_concatenated()
 
 ## Get sfdc oeople concatenated and not disqualified
 get_sfdc_people_concatenated_not_disqualified()
